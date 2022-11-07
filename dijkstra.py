@@ -1,7 +1,9 @@
 import sys
 import json
 import math  # If you want to use math.inf for infinity
-
+import netfuncs
+SLASH = "/24" # Subnet mask number
+    
 def dijkstras_shortest_path(routers, src_ip, dest_ip):
     """
     This function takes a dictionary representing the network, a source
@@ -55,8 +57,53 @@ def dijkstras_shortest_path(routers, src_ip, dest_ip):
     function. Having it all built as a single wall of code is a recipe
     for madness.
     """
-
+    # Uses code from Project 6 to compare subnets
+    src_router = netfuncs.find_router_for_ip(routers, src_ip)
+    dest_router = netfuncs.find_router_for_ip(routers, dest_ip)
+    if netfuncs.ips_same_subnet(src_router, dest_router, SLASH) == True:
+        return [] # Returns an empty array if on same subnet, /24 used for testing
     
+    # Dijkstra set and dictionaries
+    to_visit = set()
+    distance = {}
+    parent = {}
+
+    # Initializes variables
+    for router in routers:
+        parent[router] = None
+        distance[router] = math.inf
+        to_visit.add(router)
+    distance[src_router] = 0
+
+    while len(to_visit) != 0:
+        # Removes node with smallest distance
+        current_node = next(iter(to_visit))
+        for node in to_visit:
+            if distance[node] < distance[current_node]:
+                current_node = node
+        to_visit.remove(current_node)
+
+        # Gets the shortest distance from neighboring nodes
+        for neighbor in routers[current_node]["connections"]:
+            if neighbor in to_visit:
+                node_distance = distance[current_node] + routers[current_node]["connections"][neighbor]["ad"] # Adds distance of current node with edge weight
+                if node_distance < distance[neighbor]:
+                    distance[neighbor] = node_distance
+                    parent[neighbor] = current_node
+    
+    current_node = dest_router
+    path = get_path(src_router, current_node, parent)
+
+    return path
+
+def get_path(src_router, current_node, parent):
+    path = []
+    while current_node != src_router:
+        path.append(current_node)
+        current_node = parent[current_node]
+    path.append(src_router)
+    path.reverse() # Reverses path 
+    return path
 
 #------------------------------
 # DO NOT MODIFY BELOW THIS LINE
